@@ -61,6 +61,9 @@ ll_word *insert_text_sorted(ll_word *node, char *word) {
     ll_word *curr_node = node;
     ll_word *prev_node = NULL;
     while (curr_node != NULL) {
+        if (strcmp(curr_node->word, word) == 0) {
+            return node;
+        }
         if (strlen(curr_node->word) > strlen(word)) {
             prev_node = curr_node;
             curr_node = curr_node->next;
@@ -238,6 +241,7 @@ int main() {
         free(curr_node->word);
         free(curr_node);
         curr_node = temp;
+        //getchar();
     }
 }
 
