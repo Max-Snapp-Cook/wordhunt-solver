@@ -102,23 +102,6 @@ typedef struct trie {
 
 char filename[] = "dictionary.txt";
 
-char **load_vocabulary(char *filename) {
-  FILE *fptr = fopen(filename, "r");
-  char buffer[128];
-  char **out = calloc(1, sizeof(char *));
-  size_t i = 0;
-  while (fgets(buffer, sizeof(buffer), fptr) != NULL) {
-    if (strlen(buffer) > 3) {
-        out = realloc(out, (i+1)*sizeof(char *));
-        out[i] = strdup(buffer);
-        out[i][strlen(out[i])-1] = '\0';
-        i++;
-    }
-  }
-  num_words = i;
-  fclose(fptr);
-  return out;
-}
 
 trie *make_node() {
     trie *new_node = calloc(1, sizeof(trie));
@@ -142,7 +125,7 @@ void add_word(trie *head, char *word) {
     curr_node->word_end = true;
 }
 
-trie *load_vocabulary_trie(char *filename) {
+trie *load_vocabulary(char *filename) {
     // Loop through every word in the vocabulary and simply add the word to the trie
     FILE *fptr = fopen(filename, "r");
     if (!fptr) {
@@ -186,22 +169,8 @@ direction directions[8] = {
     {-1, -1} // Down Left
 };
 
-bool is_prefix(char *input, char *word) {
-    return (strncmp(input, word, strlen(input)) == 0);
-}
 
-// This function checks if any more words can be made from the input, NOT including if it
-// is already a full word itself.
-bool is_valid(char *input, char **vocabulary) {
-    for (size_t i = 0; i < num_words; i++) {
-        if (is_prefix(input, vocabulary[i]) && strlen(input) < strlen(vocabulary[i])) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool is_valid_trie(char *word, trie *head) {
+bool is_valid(char *word, trie *head) {
     trie *curr_node = head;
     while (*word) {
         size_t index = word[0] - 'a';
@@ -214,16 +183,7 @@ bool is_valid_trie(char *word, trie *head) {
     return true;
 }
 
-bool is_a_word(char *input, char **vocabulary) {
-    for (size_t i = 0; i < num_words; i++) {
-        if (strcmp(input, vocabulary[i]) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool is_a_word_trie(char *word, trie *head) {
+bool is_a_word(char *word, trie *head) {
     trie *curr_node = head;
     while (*word) {
         size_t index = word[0] - 'a';
@@ -261,14 +221,14 @@ void solve_position(char grid[4][4], bool selected[], size_t curr_row, size_t cu
         dir_word[strlen(curr_word) + 1] = '\0';
         // Check if the current letters make up a word. If they do, add them to 
         // the linked list.
-        if (is_a_word_trie(dir_word, vocab_head)) {
+        if (is_a_word(dir_word, vocab_head)) {
             //printf("found word: %s\n", dir_word);
             *results = insert_text_sorted(*results, dir_word);
         }
         // Check if the current letters can be made into anything else. If they can,
         // solve their position. This should create a recursive loop that searches 
         // every possible word for every possible position on the board.
-        if (is_valid_trie(dir_word, vocab_head)) {
+        if (is_valid(dir_word, vocab_head)) {
             solve_position(grid, selected, next_row, next_col, dir_word, vocab_head, results);
             selected[4*next_row + next_col] = false;
         } else {
@@ -284,7 +244,7 @@ void solve_position(char grid[4][4], bool selected[], size_t curr_row, size_t cu
 int main() {
     //printf("starting main loop\n");
     //size_t num_words = 0;
-    trie *vocab_head = load_vocabulary_trie(filename);
+    trie *vocab_head = load_vocabulary(filename);
     char grid[4][4];
     bool selected_array[16] = { false };
     ll_word *results = NULL;
