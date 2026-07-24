@@ -95,6 +95,11 @@ typedef struct direction {
     int y;
 } direction;
 
+typedef struct trie {
+    bool word_end;
+    struct trie *next[26];
+} trie;
+
 char filename[] = "dictionary.txt";
 
 char **load_vocabulary(char *filename) {
@@ -114,6 +119,54 @@ char **load_vocabulary(char *filename) {
   fclose(fptr);
   return out;
 }
+
+trie *make_node() {
+    trie *new_node = calloc(1, sizeof(trie));
+    new_node->word_end = false;
+    for (size_t i = 0; i < 26; i++) {
+        new_node->next[i] = NULL;
+    }
+    return new_node;
+}
+
+void add_word(trie *head, char *word) {
+    trie *curr_node = head;
+    while (*word) {
+        size_t index = word[0] - 'a';
+        if (!curr_node->next[index]) {
+            curr_node->next[index] = make_node();
+        }
+        curr_node = curr_node->next[index];
+        word++;
+    }
+    curr_node->word_end = true;
+}
+
+trie *load_vocabulary_trie(char *filename) {
+    // Loop through every word in the vocabulary and simply add the word to the trie
+    FILE *fptr = fopen(filename, "r");
+    if (!fptr) {
+        perror("Failed to open file");
+        return NULL;
+    }
+    char buffer[128];
+    trie *out = make_node();
+    for (size_t i = 0; i < 26; i++) {
+        out->next[i] = NULL;
+    }
+    size_t i = 0;
+    while (fgets(buffer, sizeof(buffer), fptr) != NULL) {
+        buffer[strcspn(buffer, "\r\n")] = '\0';
+        if (strlen(buffer) > 3) {
+            add_word(out, buffer);
+            i++;
+        }
+    }
+    num_words = i;
+    fclose(fptr);
+    return out;
+}
+
 
 void free_vocabulary(char **vocabulary) {
   for (size_t i = 0; i < num_words; i++) {
@@ -148,6 +201,19 @@ bool is_valid(char *input, char **vocabulary) {
     return false;
 }
 
+bool is_valid_trie(char *word, trie *head) {
+    trie *curr_node = head;
+    while (*word) {
+        size_t index = word[0] - 'a';
+        if (!curr_node->next[index]) {
+            return false;
+        }
+        curr_node = curr_node->next[index];
+        word++;
+    }
+    return true;
+}
+
 bool is_a_word(char *input, char **vocabulary) {
     for (size_t i = 0; i < num_words; i++) {
         if (strcmp(input, vocabulary[i]) == 0) {
@@ -157,8 +223,25 @@ bool is_a_word(char *input, char **vocabulary) {
     return false;
 }
 
+bool is_a_word_trie(char *word, trie *head) {
+    trie *curr_node = head;
+    while (*word) {
+        size_t index = word[0] - 'a';
+        if (!curr_node->next[index]) {
+            return false;
+        }
+        curr_node = curr_node->next[index];
+        word++;
+    }
+    if (curr_node->word_end) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 void solve_position(char grid[4][4], bool selected[], size_t curr_row, size_t curr_col,
-    char *curr_word, char **vocabulary, ll_word **results) {
+    char *curr_word, trie *vocab_head, ll_word **results) {
     //char curr_letter = grid[curr_row][curr_col];
     selected[4*curr_row + curr_col] = true;
     for (size_t dir = 0; dir < 8; dir++) {
@@ -178,15 +261,15 @@ void solve_position(char grid[4][4], bool selected[], size_t curr_row, size_t cu
         dir_word[strlen(curr_word) + 1] = '\0';
         // Check if the current letters make up a word. If they do, add them to 
         // the linked list.
-        if (is_a_word(dir_word, vocabulary)) {
+        if (is_a_word_trie(dir_word, vocab_head)) {
             //printf("found word: %s\n", dir_word);
             *results = insert_text_sorted(*results, dir_word);
         }
         // Check if the current letters can be made into anything else. If they can,
         // solve their position. This should create a recursive loop that searches 
         // every possible word for every possible position on the board.
-        if (is_valid(dir_word, vocabulary)) {
-            solve_position(grid, selected, next_row, next_col, dir_word, vocabulary, results);
+        if (is_valid_trie(dir_word, vocab_head)) {
+            solve_position(grid, selected, next_row, next_col, dir_word, vocab_head, results);
             selected[4*next_row + next_col] = false;
         } else {
             continue;
@@ -199,9 +282,9 @@ void solve_position(char grid[4][4], bool selected[], size_t curr_row, size_t cu
 
 
 int main() {
-    printf("starting main loop\n");
+    //printf("starting main loop\n");
     //size_t num_words = 0;
-    char **vocabulary = load_vocabulary(filename);
+    trie *vocab_head = load_vocabulary_trie(filename);
     char grid[4][4];
     bool selected_array[16] = { false };
     ll_word *results = NULL;
@@ -213,10 +296,10 @@ int main() {
         printf("enter board\n");
         scanf("%s", input);
     }
-    printf("%s\n", input);
+    //printf("%s\n", input);
     for (size_t row = 0; row < 4; row++) {
         for (size_t col = 0; col < 4; col++) {
-            printf("current character: %c\n", input[row*4 + col]);
+            //printf("current character: %c\n", input[row*4 + col]);
             grid[row][col] = input[row*4 + col];
         }
     }
@@ -227,7 +310,7 @@ int main() {
             char this_word[2];
             this_word[0] = grid[row][col];
             this_word[1] = '\0';
-            solve_position(grid, selected_array, row, col, this_word, vocabulary, &results);
+            solve_position(grid, selected_array, row, col, this_word, vocab_head, &results);
             memset(selected_array, false, sizeof(selected_array));
         }
     }
@@ -241,7 +324,6 @@ int main() {
         free(curr_node->word);
         free(curr_node);
         curr_node = temp;
-        //getchar();
     }
 }
 
