@@ -159,6 +159,15 @@ void free_vocabulary(char **vocabulary) {
   free(vocabulary);
 }
 
+void free_trie(trie *head) {
+    for (size_t i = 0; i < 26; i++) {
+        if (head->next[i]) {
+            free_trie(head->next[i]);
+        }
+    }
+    free(head);
+}
+
 direction directions[8] = {
     {-1, 0}, // Left
     {-1, 1}, // Up Left
@@ -289,6 +298,8 @@ void solve_position(int board_size, char grid[board_size][board_size], bool sele
         free(curr_node);
         curr_node = temp;
     }
+    free(input);
+    free_trie(vocab_head);
 } 
 
 
