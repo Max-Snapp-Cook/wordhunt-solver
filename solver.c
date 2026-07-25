@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 // Take in a string of 16 or 25 characters
 
@@ -200,20 +201,20 @@ bool is_a_word(char *word, trie *head) {
     }
 }
 
-void solve_position(char grid[4][4], bool selected[], size_t curr_row, size_t curr_col,
+void solve_position(int board_size, char grid[board_size][board_size], bool selected[], size_t curr_row, size_t curr_col,
     char *curr_word, trie *vocab_head, ll_word **results) {
     //char curr_letter = grid[curr_row][curr_col];
-    selected[4*curr_row + curr_col] = true;
+    selected[board_size*curr_row + curr_col] = true;
     for (size_t dir = 0; dir < 8; dir++) {
         char dir_word[32];
         int next_row = curr_row + directions[dir].x;
         int next_col = curr_col + directions[dir].y;
         // Check if the next character is on the board
-        if (next_row < 0 || next_row >= 4 || next_col < 0 || next_col >= 4) {
+        if (next_row < 0 || next_row >= board_size || next_col < 0 || next_col >= board_size) {
             continue;
         }
         // Check if the next character has already been picked
-        if (selected[4*next_row + next_col]) {
+        if (selected[board_size*next_row + next_col]) {
             continue;
         }
         strcpy(dir_word, curr_word);
@@ -229,48 +230,51 @@ void solve_position(char grid[4][4], bool selected[], size_t curr_row, size_t cu
         // solve their position. This should create a recursive loop that searches 
         // every possible word for every possible position on the board.
         if (is_valid(dir_word, vocab_head)) {
-            solve_position(grid, selected, next_row, next_col, dir_word, vocab_head, results);
-            selected[4*next_row + next_col] = false;
+            solve_position(board_size, grid, selected, next_row, next_col, dir_word, vocab_head, results);
+            selected[board_size*next_row + next_col] = false;
         } else {
             continue;
         }
     }
-    selected[4*curr_row + curr_col] = false;
+    selected[board_size*curr_row + curr_col] = false;
     return;
 }
 
 
-
-int main() {
+ int main() {
     //printf("starting main loop\n");
     //size_t num_words = 0;
     trie *vocab_head = load_vocabulary(filename);
-    char grid[4][4];
-    bool selected_array[16] = { false };
     ll_word *results = NULL;
     // I need a function to fill the grid based on a string input from the user
-    char *input = calloc(17, sizeof(char));
+    char *input = calloc(256, sizeof(char));
     printf("enter board\n");
     scanf("%s", input);
-    while (strlen(input) != 16) {
+    while (strlen(input) < 16 || sqrt(strlen(input)) != floor(sqrt(strlen(input)))) {
         printf("enter board\n");
         scanf("%s", input);
     }
+    int board_spaces = strlen(input);
+    int board_size = (int)round(sqrt(board_spaces));
+    //printf("the board length is %i and the number of spaces is %i\n", board_size, board_spaces);
+    char grid[board_size][board_size];
+    bool selected_array[board_spaces];
+    memset(selected_array, 0, sizeof(selected_array));
     //printf("%s\n", input);
-    for (size_t row = 0; row < 4; row++) {
-        for (size_t col = 0; col < 4; col++) {
-            //printf("current character: %c\n", input[row*4 + col]);
-            grid[row][col] = input[row*4 + col];
+    for (size_t row = 0; row < board_size; row++) {
+        for (size_t col = 0; col < board_size; col++) {
+            printf("current character: %c\n", input[row*board_size + col]);
+            grid[row][col] = input[row*board_size + col];
         }
     }
     // Once the grid is filled, call the solve function on it at position 0
-    for (size_t row = 0; row < 4; row++) {
-        for (size_t col = 0; col < 4; col++) {
+    for (size_t row = 0; row < board_size; row++) {
+        for (size_t col = 0; col < board_size; col++) {
             //printf("current character: %c\n", grid[row][col]);
             char this_word[2];
             this_word[0] = grid[row][col];
             this_word[1] = '\0';
-            solve_position(grid, selected_array, row, col, this_word, vocab_head, &results);
+            solve_position(board_size, grid, selected_array, row, col, this_word, vocab_head, &results);
             memset(selected_array, false, sizeof(selected_array));
         }
     }
@@ -285,7 +289,7 @@ int main() {
         free(curr_node);
         curr_node = temp;
     }
-}
+} 
 
 
 
